@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup_command.txt -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2
@@ -54,7 +54,6 @@ jobs:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
         package: sharepoint-mcp-deploy.zip
-        startup-command: 'python -m uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000'
         
     - name: Configure App Settings
       run: |
@@ -64,7 +63,15 @@ jobs:
           --settings \
             SCM_DO_BUILD_DURING_DEPLOYMENT=true \
             PYTHON_VERSION=${{ env.PYTHON_VERSION }} \
-            WEBSITES_PORT=8000
+            WEBSITES_PORT=8000 \
+            SHAREPOINT_SITE_URL="https://tassehcapital.sharepoint.com/sites/Business"
+            
+    - name: Configure Startup Command
+      run: |
+        az webapp config set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --startup-file "startup.sh"
             
     - name: Verify deployment
       run: |
