@@ -1,14 +1,16 @@
 # Azure SharePoint MCP Server
 
-A Model Context Protocol (MCP) server that provides secure access to Microsoft SharePoint for reading and writing files through Azure authentication.
+A Model Context Protocol (MCP) server that provides secure access to Microsoft SharePoint for reading and writing files through Azure authentication and Microsoft Graph API.
 
 ## Features
 
 - **File Operations**: Read, write, and delete files in SharePoint
 - **Folder Management**: List contents and create folders
 - **Azure Authentication**: Secure authentication using Azure Identity
+- **Microsoft Graph API**: Modern, reliable API for SharePoint operations
 - **MCP Compliance**: Full integration with MCP-compatible clients
 - **Type Safety**: Built with Python type hints and Pydantic models
+- **High Performance**: Direct REST API calls without legacy dependencies
 
 ## Installation
 
@@ -152,6 +154,16 @@ Test the SharePoint connection.
 }
 ```
 
+#### `get_site_info`
+Get detailed information about the SharePoint site.
+
+```json
+{
+  "name": "get_site_info",
+  "arguments": {}
+}
+```
+
 ## Client Integration
 
 ### Claude Desktop
@@ -287,8 +299,15 @@ logging.basicConfig(level=logging.DEBUG)
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Architecture
+
+This MCP server uses:
+- **Microsoft Graph API** for SharePoint operations (modern, reliable)
+- **Azure Identity** for secure authentication
+- **Direct REST calls** for optimal performance
+
 ## Related Projects
 
 - [Model Context Protocol](https://github.com/anthropics/mcp)
 - [Azure Identity](https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity)
-- [Office 365 REST Python Client](https://github.com/vgrem/Office365-REST-Python-Client)
+- [Microsoft Graph API](https://docs.microsoft.com/en-us/graph/)

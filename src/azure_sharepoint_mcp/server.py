@@ -16,7 +16,7 @@ from mcp.types import (
 from pydantic import BaseModel
 
 from .auth import SharePointAuthenticator
-from .sharepoint_client import SharePointClient
+from .graph_client import GraphSharePointClient
 
 
 # Configure logging
@@ -49,7 +49,7 @@ class SharePointMCPServer:
             client_id=config.client_id,
             client_secret=config.client_secret,
         )
-        self.client = SharePointClient(self.authenticator)
+        self.client = GraphSharePointClient(self.authenticator)
         
         # Register handlers
         self._register_handlers()
@@ -192,6 +192,14 @@ class SharePointMCPServer:
                         "properties": {},
                     },
                 ),
+                Tool(
+                    name="get_site_info",
+                    description="Get SharePoint site information",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                    },
+                ),
             ]
         
         @self.server.call_tool()
@@ -257,6 +265,10 @@ class SharePointMCPServer:
                             "message": "Connection successful" if success else "Connection failed"
                         })
                     )]
+                
+                elif name == "get_site_info":
+                    site_info = self.client.get_site_info()
+                    return [TextContent(type="text", text=json.dumps(site_info, indent=2))]
                 
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]

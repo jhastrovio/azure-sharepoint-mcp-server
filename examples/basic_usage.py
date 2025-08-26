@@ -54,28 +54,36 @@ async def main():
             print(f"  {file_info['type']}: {file_info['name']}")
         print()
         
+        # Get site information
+        print("Getting site information...")
+        site_info = server.client.get_site_info()
+        print(f"Site Name: {site_info['name']}")
+        print(f"Site ID: {site_info['id']}")
+        print()
+        
         # Create a test file
         print("Creating test file...")
-        test_content = "Hello from Azure SharePoint MCP Server!\nGenerated at: " + str(asyncio.get_event_loop().time())
-        result = server.client.write_file("/test_mcp_file.txt", test_content)
+        import time
+        test_content = f"Hello from Azure SharePoint MCP Server!\nGenerated at: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        result = server.client.write_file("test_mcp_file.txt", test_content)
         print(f"✓ Created: {result['name']} ({result['size']} bytes)")
         print()
         
         # Read the test file
         print("Reading test file...")
-        content = server.client.read_file_text("/test_mcp_file.txt")
+        content = server.client.read_file_text("test_mcp_file.txt")
         print(f"Content:\n{content}")
         print()
         
         # Check if file exists
         print("Checking if file exists...")
-        exists = server.client.file_exists("/test_mcp_file.txt")
+        exists = server.client.file_exists("test_mcp_file.txt")
         print(f"File exists: {exists}")
         print()
         
         # Clean up - delete test file
         print("Cleaning up...")
-        server.client.delete_file("/test_mcp_file.txt")
+        server.client.delete_file("test_mcp_file.txt")
         print("✓ Test file deleted")
         
     except Exception as e:
