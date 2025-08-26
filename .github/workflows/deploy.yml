@@ -1,0 +1,63 @@
+name: Deploy SharePoint MCP Server to Azure
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  AZURE_WEBAPP_NAME: personalmsa-deploy-app
+  AZURE_RESOURCE_GROUP: rg-personalmsa
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v
+        
+    - name: Build deployment package
+      run: |
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup_command.txt -x "**/__pycache__/*" "**/*.pyc"
+        
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
+        package: sharepoint-mcp-deploy.zip
+        startup-command: 'python -m uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000'
+        
+    - name: Configure App Settings
+      run: |
+        az webapp config appsettings set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --settings \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }} \
+            WEBSITES_PORT=8000
+            
+    - name: Verify deployment
+      run: |
+        echo "Deployment completed successfully!"
+        echo "Your SharePoint MCP Server is now available at:"
+        echo "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/"
