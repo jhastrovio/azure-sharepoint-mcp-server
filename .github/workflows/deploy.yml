@@ -8,7 +8,7 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 env:
-  AZURE_WEBAPP_NAME: personalmsa-deploy-app
+  AZURE_WEBAPP_NAME: sharepoint-mcp-new
   AZURE_RESOURCE_GROUP: rg-personalmsa
   PYTHON_VERSION: '3.12'
 
@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2
@@ -71,7 +71,7 @@ jobs:
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --startup-file "startup.sh"
+          --startup-file "pip install -r requirements.txt && python -m uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000"
             
     - name: Verify deployment
       run: |
