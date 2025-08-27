@@ -3,6 +3,7 @@
 import os
 import requests
 from typing import Optional
+from azure.core.credentials import TokenCredential
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
 
 
@@ -28,9 +29,9 @@ class SharePointAuthenticator:
         self.tenant_id = tenant_id or os.getenv("AZURE_TENANT_ID")
         self.client_id = client_id or os.getenv("AZURE_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("AZURE_CLIENT_SECRET")
-        self._credential: Optional[ClientSecretCredential] = None
-    
-    def get_credential(self) -> ClientSecretCredential:
+        self._credential: Optional[TokenCredential] = None
+
+    def get_credential(self) -> TokenCredential:
         """Get Azure credential.
         
         Returns:
