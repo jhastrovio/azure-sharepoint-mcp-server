@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>fd4986dc878ef324dcf0e333dec7dd2ccb702383</id>
+  <author>James Hassett</author>
+  <deployer>GitHub</deployer>
+  <authorEmail>james.hassett@trovio.io</authorEmail>
+  <message>🚀 Major update: Replace Office365 client with Microsoft Graph API
+    
+    ✨ Features:
+    - Replaced Office365 REST Python client with Microsoft Graph API
+    - Added GraphSharePointClient for reliable SharePoint operations
+    - Added get_site_info tool for site information
+    - Improved authentication using Azure Identity + Graph tokens
+    
+    🔧 Improvements:
+    - Removed legacy Office365 dependencies (office365-rest-python-client, aiohttp)
+    - Simplified dependencies to core requirements
+    - Better error handling and type safety
+    - Faster performance with direct REST API calls
+    
+    ✅ Tested with Tasseh Capital SharePoint site:
+    - All file operations working (read, write, delete, list)
+    - Site info retrieval working
+    - Connection testing working
+    - Authentication via existing Azure app registration working
+    
+    🧹 Cleanup:
+    - Removed outdated sharepoint_client.py
+    - Removed temporary test files
+    - Updated documentation and examples
+    - Updated dependencies in pyproject.toml and requirements.txt</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-08-26T03:49:35.3461691Z</lastSuccessEndTime>
+  <receivedTime>2025-08-26T03:47:18.3634599Z</receivedTime>
+  <startTime>2025-08-26T03:47:20.4299388Z</startTime>
+  <endTime>2025-08-26T03:49:35.3461691Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>False</is_readonly>
+  <buildSummary />
+</deployment>
