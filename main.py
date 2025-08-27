@@ -9,6 +9,5 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 # Import the FastAPI app
 from azure_sharepoint_mcp.web_server import app
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# This is the standard way Azure App Service expects to find the app
+# The app variable should be accessible at module level
