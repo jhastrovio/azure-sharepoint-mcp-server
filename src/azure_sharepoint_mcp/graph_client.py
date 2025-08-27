@@ -173,7 +173,7 @@ class GraphSharePointClient:
             overwrite: Whether to overwrite existing file. When ``False``,
                 the method checks if the file already exists and raises an
                 exception if it does. The upload request sets the
-                ``@microsoft.graph.conflictBehavior`` header to ``"rename"``
+                ``@microsoft.graph.conflictBehavior`` header to ``"replace"``
                 when overwriting and ``"fail"`` otherwise.
 
         Returns:
@@ -201,7 +201,7 @@ class GraphSharePointClient:
             headers = self._get_headers()
             headers["Content-Type"] = "application/octet-stream"
             headers["@microsoft.graph.conflictBehavior"] = (
-                "rename" if overwrite else "fail"
+                "replace" if overwrite else "fail"
             )
 
             response = requests.put(url, headers=headers, data=content_bytes)
@@ -211,7 +211,7 @@ class GraphSharePointClient:
             
             return {
                 "name": file_data["name"],
-                "path": f"/{file_data['name']}",
+                "path": f"/{clean_path}",
                 "size": file_data["size"],
                 "modified": file_data.get("lastModifiedDateTime"),
                 "created": file_data.get("createdDateTime"),
