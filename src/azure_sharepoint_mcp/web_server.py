@@ -53,7 +53,10 @@ def initialize_mcp_server():
 @app.on_event("startup")
 async def startup_event():
     """Initialize MCP server on startup."""
-    initialize_mcp_server()
+    try:
+        initialize_mcp_server()
+    except Exception as e:
+        logger.error(f"Startup crash: {type(e).__name__} - {e}", exc_info=True)
 
 @app.get("/")
 async def root():
