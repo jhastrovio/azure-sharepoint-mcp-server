@@ -319,10 +319,10 @@ class SharePointMCPServer:
             raise ValueError(f"Unsupported transport type: {transport_type}")
 
 
-async def main() -> None:
+async def async_main() -> None:
     """Main entry point."""
     import os
-    
+
     # Load configuration from environment variables
     config = SharePointConfig(
         site_url=os.getenv("SHAREPOINT_SITE_URL", ""),
@@ -330,13 +330,17 @@ async def main() -> None:
         client_id=os.getenv("AZURE_CLIENT_ID"),
         client_secret=os.getenv("AZURE_CLIENT_SECRET"),
     )
-    
+
     if not config.site_url:
         raise ValueError("SHAREPOINT_SITE_URL environment variable is required")
-    
+
     server = SharePointMCPServer(config)
     await server.run()
 
 
+def main() -> None:
+    asyncio.run(async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
