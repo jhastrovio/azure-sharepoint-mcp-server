@@ -49,11 +49,18 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
     - name: Deploy to Azure App Service
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
-        package: sharepoint-mcp-deploy.zip
+      run: |
+        echo "Deploying to Azure App Service: ${{ env.AZURE_WEBAPP_NAME }}"
+        echo "Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
+        
+        # Check if the App Service exists
+        az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+        
+        # Deploy the package
+        az webapp deployment source config-zip \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src sharepoint-mcp-deploy.zip
         
     - name: Configure App Settings
       run: |
