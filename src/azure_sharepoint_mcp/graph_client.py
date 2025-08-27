@@ -1,10 +1,10 @@
 """Microsoft Graph SharePoint client for file operations."""
 
-import io
 import json
-import requests
 from typing import List, Dict, Any, Optional, Union
 from urllib.parse import quote
+
+import httpx
 
 from .auth import SharePointAuthenticator
 
@@ -32,11 +32,11 @@ class GraphSharePointClient:
             "Content-Type": "application/json"
         }
     
-    def _get_site_id(self) -> str:
+    async def _get_site_id(self) -> str:
         """Get the SharePoint site ID."""
         if self._site_id is not None:
             return self._site_id
-            
+
         # Extract site path from URL
         site_url = self.authenticator.site_url
         if "/sites/" in site_url:
@@ -44,35 +44,37 @@ class GraphSharePointClient:
             hostname = site_url.split("//", 1)[1].split("/", 1)[0]
         else:
             raise ValueError("Invalid SharePoint site URL format")
-        
+
         # Get site information
         url = f"{self.base_url}/sites/{hostname}:/sites/{site_path}"
-        response = requests.get(url, headers=self._get_headers())
-        response.raise_for_status()
-        
-        site_data = response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self._get_headers())
+            response.raise_for_status()
+            site_data = response.json()
+
         self._site_id = site_data["id"]
         return self._site_id
     
-    def _get_default_drive_id(self) -> str:
+    async def _get_default_drive_id(self) -> str:
         """Get the default document library drive ID."""
         if self._default_drive_id is not None:
             return self._default_drive_id
-            
-        site_id = self._get_site_id()
+
+        site_id = await self._get_site_id()
         url = f"{self.base_url}/sites/{site_id}/drives"
-        response = requests.get(url, headers=self._get_headers())
-        response.raise_for_status()
-        
-        drives_data = response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self._get_headers())
+            response.raise_for_status()
+            drives_data = response.json()
+
         if not drives_data["value"]:
             raise Exception("No document libraries found")
-            
+
         # Use the first drive (usually "Documents")
         self._default_drive_id = drives_data["value"][0]["id"]
         return self._default_drive_id
     
-    def list_files(self, folder_path: str = "/") -> List[Dict[str, Any]]:
+    async def list_files(self, folder_path: str = "/") -> List[Dict[str, Any]]:
         """List files in a SharePoint folder.
         
         Args:
@@ -82,7 +84,7 @@ class GraphSharePointClient:
             List of file information dictionaries
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Build the path
             if folder_path == "/" or folder_path == "":
@@ -93,10 +95,10 @@ class GraphSharePointClient:
                 encoded_path = quote(clean_path, safe="/")
                 url = f"{self.base_url}/drives/{drive_id}/root:/{encoded_path}:/children"
             
-            response = requests.get(url, headers=self._get_headers())
-            response.raise_for_status()
-            
-            files_data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=self._get_headers())
+                response.raise_for_status()
+                files_data = response.json()
             files_info = []
             
             for item in files_data.get("value", []):
@@ -120,7 +122,7 @@ class GraphSharePointClient:
         except Exception as e:
             raise Exception(f"Failed to list files: {str(e)}")
     
-    def read_file(self, file_path: str) -> bytes:
+    async def read_file(self, file_path: str) -> bytes:
         """Read a file from SharePoint.
         
         Args:
@@ -130,7 +132,7 @@ class GraphSharePointClient:
             File content as bytes
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Remove leading slash and encode path
             clean_path = file_path.lstrip("/")
@@ -138,15 +140,15 @@ class GraphSharePointClient:
             
             # Get download URL
             url = f"{self.base_url}/drives/{drive_id}/root:/{encoded_path}:/content"
-            response = requests.get(url, headers=self._get_headers())
-            response.raise_for_status()
-            
-            return response.content
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=self._get_headers())
+                response.raise_for_status()
+                return response.content
             
         except Exception as e:
             raise Exception(f"Failed to read file '{file_path}': {str(e)}")
     
-    def read_file_text(self, file_path: str, encoding: str = "utf-8") -> str:
+    async def read_file_text(self, file_path: str, encoding: str = "utf-8") -> str:
         """Read a text file from SharePoint.
         
         Args:
@@ -156,10 +158,10 @@ class GraphSharePointClient:
         Returns:
             File content as string
         """
-        content = self.read_file(file_path)
+        content = await self.read_file(file_path)
         return content.decode(encoding)
     
-    def write_file(
+    async def write_file(
         self, 
         file_path: str, 
         content: Union[str, bytes], 
@@ -176,7 +178,7 @@ class GraphSharePointClient:
             File information dictionary
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Convert string content to bytes
             if isinstance(content, str):
@@ -194,10 +196,10 @@ class GraphSharePointClient:
             headers = self._get_headers()
             headers["Content-Type"] = "application/octet-stream"
             
-            response = requests.put(url, headers=headers, data=content_bytes)
-            response.raise_for_status()
-            
-            file_data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.put(url, headers=headers, data=content_bytes)
+                response.raise_for_status()
+                file_data = response.json()
             
             return {
                 "name": file_data["name"],
@@ -211,7 +213,7 @@ class GraphSharePointClient:
         except Exception as e:
             raise Exception(f"Failed to write file '{file_path}': {str(e)}")
     
-    def delete_file(self, file_path: str) -> bool:
+    async def delete_file(self, file_path: str) -> bool:
         """Delete a file from SharePoint.
         
         Args:
@@ -221,22 +223,23 @@ class GraphSharePointClient:
             True if successful
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Remove leading slash and encode path
             clean_path = file_path.lstrip("/")
             encoded_path = quote(clean_path, safe="/")
             
             url = f"{self.base_url}/drives/{drive_id}/root:/{encoded_path}"
-            response = requests.delete(url, headers=self._get_headers())
-            response.raise_for_status()
+            async with httpx.AsyncClient() as client:
+                response = await client.delete(url, headers=self._get_headers())
+                response.raise_for_status()
             
             return True
             
         except Exception as e:
             raise Exception(f"Failed to delete file '{file_path}': {str(e)}")
     
-    def create_folder(self, folder_path: str) -> Dict[str, Any]:
+    async def create_folder(self, folder_path: str) -> Dict[str, Any]:
         """Create a folder in SharePoint.
         
         Args:
@@ -246,7 +249,7 @@ class GraphSharePointClient:
             Folder information dictionary
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Parse parent path and folder name
             clean_path = folder_path.strip("/")
@@ -267,10 +270,10 @@ class GraphSharePointClient:
                 "@microsoft.graph.conflictBehavior": "fail"
             }
             
-            response = requests.post(url, headers=self._get_headers(), json=data)
-            response.raise_for_status()
-            
-            folder_data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=self._get_headers(), json=data)
+                response.raise_for_status()
+                folder_data = response.json()
             
             return {
                 "name": folder_data["name"],
@@ -282,7 +285,7 @@ class GraphSharePointClient:
         except Exception as e:
             raise Exception(f"Failed to create folder '{folder_path}': {str(e)}")
     
-    def file_exists(self, file_path: str) -> bool:
+    async def file_exists(self, file_path: str) -> bool:
         """Check if a file exists in SharePoint.
         
         Args:
@@ -292,33 +295,34 @@ class GraphSharePointClient:
             True if file exists, False otherwise
         """
         try:
-            drive_id = self._get_default_drive_id()
+            drive_id = await self._get_default_drive_id()
             
             # Remove leading slash and encode path
             clean_path = file_path.lstrip("/")
             encoded_path = quote(clean_path, safe="/")
             
             url = f"{self.base_url}/drives/{drive_id}/root:/{encoded_path}"
-            response = requests.get(url, headers=self._get_headers())
-            
-            return response.status_code == 200
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=self._get_headers())
+
+                return response.status_code == 200
             
         except Exception:
             return False
     
-    def get_site_info(self) -> Dict[str, Any]:
+    async def get_site_info(self) -> Dict[str, Any]:
         """Get SharePoint site information.
         
         Returns:
             Site information dictionary
         """
         try:
-            site_id = self._get_site_id()
+            site_id = await self._get_site_id()
             url = f"{self.base_url}/sites/{site_id}"
-            response = requests.get(url, headers=self._get_headers())
-            response.raise_for_status()
-            
-            site_data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=self._get_headers())
+                response.raise_for_status()
+                site_data = response.json()
             return {
                 "id": site_data["id"],
                 "name": site_data["name"],

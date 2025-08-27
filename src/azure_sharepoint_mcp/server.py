@@ -74,7 +74,7 @@ class SharePointMCPServer:
             """Read SharePoint resource."""
             if uri == "sharepoint://files":
                 try:
-                    files = self.client.list_files("/")
+                    files = await self.client.list_files("/")
                     return json.dumps(files, indent=2)
                 except Exception as e:
                     logger.error(f"Failed to list files: {e}")
@@ -208,7 +208,7 @@ class SharePointMCPServer:
             try:
                 if name == "list_files":
                     folder_path = arguments.get("folder_path", "/")
-                    files = self.client.list_files(folder_path)
+                    files = await self.client.list_files(folder_path)
                     return [TextContent(type="text", text=json.dumps(files, indent=2))]
                 
                 elif name == "read_file":
@@ -216,13 +216,13 @@ class SharePointMCPServer:
                     encoding = arguments.get("encoding", "utf-8")
                     
                     try:
-                        content = self.client.read_file_text(file_path, encoding)
+                        content = await self.client.read_file_text(file_path, encoding)
                         return [TextContent(type="text", text=content)]
                     except UnicodeDecodeError:
                         # If text decoding fails, return as binary
-                        content = self.client.read_file(file_path)
+                        content = await self.client.read_file(file_path)
                         return [TextContent(
-                            type="text", 
+                            type="text",
                             text=f"Binary file content ({len(content)} bytes): {content[:100]}..."
                         )]
                 
@@ -231,34 +231,34 @@ class SharePointMCPServer:
                     content = arguments["content"]
                     overwrite = arguments.get("overwrite", True)
                     
-                    result = self.client.write_file(file_path, content, overwrite)
+                    result = await self.client.write_file(file_path, content, overwrite)
                     return [TextContent(type="text", text=json.dumps(result, indent=2))]
                 
                 elif name == "delete_file":
                     file_path = arguments["file_path"]
-                    success = self.client.delete_file(file_path)
+                    success = await self.client.delete_file(file_path)
                     return [TextContent(
-                        type="text", 
+                        type="text",
                         text=json.dumps({"success": success, "message": f"File '{file_path}' deleted"})
                     )]
                 
                 elif name == "create_folder":
                     folder_path = arguments["folder_path"]
-                    result = self.client.create_folder(folder_path)
+                    result = await self.client.create_folder(folder_path)
                     return [TextContent(type="text", text=json.dumps(result, indent=2))]
                 
                 elif name == "file_exists":
                     file_path = arguments["file_path"]
-                    exists = self.client.file_exists(file_path)
+                    exists = await self.client.file_exists(file_path)
                     return [TextContent(
-                        type="text", 
+                        type="text",
                         text=json.dumps({"exists": exists, "file_path": file_path})
                     )]
                 
                 elif name == "test_connection":
-                    success = self.authenticator.test_connection()
+                    success = await asyncio.to_thread(self.authenticator.test_connection)
                     return [TextContent(
-                        type="text", 
+                        type="text",
                         text=json.dumps({
                             "connected": success,
                             "site_url": self.config.site_url,
@@ -267,7 +267,7 @@ class SharePointMCPServer:
                     )]
                 
                 elif name == "get_site_info":
-                    site_info = self.client.get_site_info()
+                    site_info = await self.client.get_site_info()
                     return [TextContent(type="text", text=json.dumps(site_info, indent=2))]
                 
                 else:
@@ -276,6 +276,12 @@ class SharePointMCPServer:
             except Exception as e:
                 logger.error(f"Tool '{name}' failed: {e}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+        # Expose handlers for direct invocation in tests
+        self._handle_list_resources = handle_list_resources
+        self._handle_read_resource = handle_read_resource
+        self._handle_list_tools = handle_list_tools
+        self._handle_call_tool = handle_call_tool
     
     async def run(self, transport_type: str = "stdio") -> None:
         """Run the MCP server.
