@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh azure.yaml application.py gunicorn.conf.py -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh azure.yaml main.py gunicorn.conf.py -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2

@@ -2,5 +2,5 @@ language: python
 pythonVersion: '3.12'
 startupCommand: 'startup.sh'
 # Alternative startup commands if startup.sh fails:
+# startupCommand: 'uvicorn main:app --host 0.0.0.0 --port 8000'
 # startupCommand: 'gunicorn gunicorn.conf.py:app'
-# startupCommand: 'python application.py'
