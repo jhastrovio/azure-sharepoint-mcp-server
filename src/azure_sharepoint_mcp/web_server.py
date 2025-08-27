@@ -85,7 +85,8 @@ async def execute_tool(tool_name: str, params: Dict[str, Any] = None):
     
     try:
         result = await mcp_server.call_tool(tool_name, params or {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -97,7 +98,8 @@ async def get_site_info():
     
     try:
         result = await mcp_server.call_tool("get_site_info", {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -109,7 +111,8 @@ async def list_files():
     
     try:
         result = await mcp_server.call_tool("list_files", {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
