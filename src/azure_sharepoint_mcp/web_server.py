@@ -73,7 +73,8 @@ async def health():
 async def tools():
     """List available MCP tools."""
     if mcp_server:
-        return {"tools": [tool.name for tool in mcp_server.list_tools()]}
+        tools = await mcp_server.list_tools()
+        return {"tools": [tool.name for tool in tools]}
     return {"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]}
 
 @app.post("/execute")
