@@ -78,12 +78,11 @@ jobs:
             
     - name: Configure Startup Command
       run: |
-        # Use Azure's native Python startup with gunicorn for Flask
-        # This follows Microsoft's recommended approach for Flask apps
+        # Remove any custom startup command to use Azure's default Python startup
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --startup-command "gunicorn main:app --bind 0.0.0.0:8000"
+          --startup-command ""
         
         # Set Python-specific app settings
         az webapp config appsettings set \
