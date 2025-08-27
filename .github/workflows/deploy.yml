@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt azure.yaml application.py -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt azure.yaml application.py wsgi.py -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2
@@ -78,19 +78,19 @@ jobs:
             
     - name: Configure Startup Command
       run: |
-        # Remove any custom startup command to use Azure's default Python startup
-        # Use generic-configurations to clear the startup command
+        # Set a proper startup command for Flask using wsgi.py
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --generic-configurations '{"appCommandLine": ""}'
+          --generic-configurations '{"appCommandLine": "python wsgi.py"}'
         
         # Set Python-specific app settings
         az webapp config appsettings set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --settings \
-            PYTHONPATH="/home/site/wwwroot/src"
+            PYTHONPATH="/home/site/wwwroot/src" \
+            FLASK_APP="application.py"
         
         # Enable logging as recommended by Microsoft
         az webapp log config \

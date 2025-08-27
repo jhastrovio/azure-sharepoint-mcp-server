@@ -174,3 +174,8 @@ Desktop.ini
 *.log
 config.json
 secrets.json
+
+# Azure App Service logs and deployments
+LogFiles/
+deployments/
+webapp_logs.zip
