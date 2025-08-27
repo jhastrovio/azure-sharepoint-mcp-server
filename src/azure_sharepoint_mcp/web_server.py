@@ -39,10 +39,10 @@ def initialize_mcp_server():
     global mcp_server
     try:
         config = SharePointConfig(
-            sharepoint_site_url=os.getenv("SHAREPOINT_SITE_URL"),
-            azure_tenant_id=os.getenv("AZURE_TENANT_ID"),
-            azure_client_id=os.getenv("AZURE_CLIENT_ID"),
-            azure_client_secret=os.getenv("AZURE_CLIENT_SECRET")
+            site_url=os.getenv("SHAREPOINT_SITE_URL"),
+            tenant_id=os.getenv("AZURE_TENANT_ID"),
+            client_id=os.getenv("AZURE_CLIENT_ID"),
+            client_secret=os.getenv("AZURE_CLIENT_SECRET"),
         )
         mcp_server = SharePointMCPServer(config)
         logger.info("MCP Server initialized successfully")
@@ -73,7 +73,8 @@ async def health():
 async def tools():
     """List available MCP tools."""
     if mcp_server:
-        return {"tools": [tool.name for tool in mcp_server.list_tools()]}
+        tools = await mcp_server.list_tools()
+        return {"tools": [tool.name for tool in tools]}
     return {"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]}
 
 @app.post("/execute")
@@ -84,7 +85,8 @@ async def execute_tool(tool_name: str, params: Dict[str, Any] = None):
     
     try:
         result = await mcp_server.call_tool(tool_name, params or {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -96,7 +98,8 @@ async def get_site_info():
     
     try:
         result = await mcp_server.call_tool("get_site_info", {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -108,7 +111,8 @@ async def list_files():
     
     try:
         result = await mcp_server.call_tool("list_files", {})
-        return {"success": True, "result": result}
+        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
+        return {"success": True, "result": serialized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -12,6 +12,9 @@ from mcp.types import (
     TextContent,
     ImageContent,
     EmbeddedResource,
+    ListToolsRequest,
+    CallToolRequest,
+    CallToolRequestParams,
 )
 from pydantic import BaseModel
 
@@ -53,7 +56,7 @@ class SharePointMCPServer:
         
         # Register handlers
         self._register_handlers()
-    
+
     def _register_handlers(self) -> None:
         """Register MCP handlers."""
         
@@ -72,7 +75,7 @@ class SharePointMCPServer:
         @self.server.read_resource()
         async def handle_read_resource(uri: str) -> str:
             """Read SharePoint resource."""
-            if uri == "sharepoint://files":
+            if str(uri) == "sharepoint://files":
                 try:
                     files = self.client.list_files("/")
                     return json.dumps(files, indent=2)
@@ -276,7 +279,21 @@ class SharePointMCPServer:
             except Exception as e:
                 logger.error(f"Tool '{name}' failed: {e}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
-    
+
+    async def list_tools(self) -> List[Tool]:
+        """List registered MCP tools."""
+        req = ListToolsRequest(method="tools/list")
+        result = await self.server.request_handlers[ListToolsRequest](req)
+        return result.root.tools
+
+    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Call a registered tool by name."""
+        req = CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name=name, arguments=arguments),
+        )
+        result = await self.server.request_handlers[CallToolRequest](req)
+        return result.root.content
     async def run(self, transport_type: str = "stdio") -> None:
         """Run the MCP server.
         
@@ -303,10 +320,10 @@ class SharePointMCPServer:
             raise ValueError(f"Unsupported transport type: {transport_type}")
 
 
-async def main() -> None:
+async def async_main() -> None:
     """Main entry point."""
     import os
-    
+
     # Load configuration from environment variables
     config = SharePointConfig(
         site_url=os.getenv("SHAREPOINT_SITE_URL", ""),
@@ -314,13 +331,17 @@ async def main() -> None:
         client_id=os.getenv("AZURE_CLIENT_ID"),
         client_secret=os.getenv("AZURE_CLIENT_SECRET"),
     )
-    
+
     if not config.site_url:
         raise ValueError("SHAREPOINT_SITE_URL environment variable is required")
-    
+
     server = SharePointMCPServer(config)
     await server.run()
 
 
+def main() -> None:
+    asyncio.run(async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
