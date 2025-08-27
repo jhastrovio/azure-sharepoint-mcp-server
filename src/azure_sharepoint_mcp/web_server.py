@@ -21,6 +21,7 @@ app = FastAPI(
     description="MCP Server for SharePoint operations via Microsoft Graph API",
     version="1.0.0"
 )
+logger.info("FastAPI app created.")
 
 # Add CORS middleware
 app.add_middleware(
@@ -45,7 +46,7 @@ def initialize_mcp_server():
             client_secret=os.getenv("AZURE_CLIENT_SECRET"),
         )
         mcp_server = SharePointMCPServer(config)
-        logger.info("MCP Server initialized successfully")
+        logger.info("MCP server initialized successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize MCP Server: {e}")
         raise
