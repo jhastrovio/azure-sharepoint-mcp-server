@@ -160,24 +160,31 @@ class GraphSharePointClient:
         return content.decode(encoding)
     
     def write_file(
-        self, 
-        file_path: str, 
-        content: Union[str, bytes], 
+        self,
+        file_path: str,
+        content: Union[str, bytes],
         overwrite: bool = True
     ) -> Dict[str, Any]:
         """Write a file to SharePoint.
-        
+
         Args:
             file_path: SharePoint file path
             content: File content (string or bytes)
-            overwrite: Whether to overwrite existing file
-            
+            overwrite: Whether to overwrite existing file. When ``False``,
+                the method checks if the file already exists and raises an
+                exception if it does. The upload request sets the
+                ``@microsoft.graph.conflictBehavior`` header to ``"rename"``
+                when overwriting and ``"fail"`` otherwise.
+
         Returns:
             File information dictionary
         """
         try:
             drive_id = self._get_default_drive_id()
-            
+
+            if not overwrite and self.file_exists(file_path):
+                raise Exception(f"File '{file_path}' already exists")
+
             # Convert string content to bytes
             if isinstance(content, str):
                 content_bytes = content.encode("utf-8")
@@ -190,10 +197,13 @@ class GraphSharePointClient:
             
             # Upload file
             url = f"{self.base_url}/drives/{drive_id}/root:/{encoded_path}:/content"
-            
+
             headers = self._get_headers()
             headers["Content-Type"] = "application/octet-stream"
-            
+            headers["@microsoft.graph.conflictBehavior"] = (
+                "rename" if overwrite else "fail"
+            )
+
             response = requests.put(url, headers=headers, data=content_bytes)
             response.raise_for_status()
             
