@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh azure.yaml main.py gunicorn.conf.py -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh azure.yaml main.py gunicorn.conf.py test_import.py -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2
@@ -78,13 +78,13 @@ jobs:
             
     - name: Configure Startup Command
       run: |
-        # Use a direct startup command instead of a startup file
+        # Set the startup command to use our main.py file
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --startup-file "startup.sh"
         
-        # Also set the startup command as a backup
+        # Also set the startup command directly as a backup
         az webapp config appsettings set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
@@ -92,7 +92,14 @@ jobs:
             WEBSITES_CONTAINER_START_TIME_LIMIT=1800 \
             PYTHON_ENABLE_VENV_SITE_PACKAGES=true \
             PYTHON_ENABLE_DEBUG_LOGGING=true \
-            PYTHONPATH="/home/site/wwwroot/src"
+            PYTHONPATH="/home/site/wwwroot/src" \
+            WEBSITES_CONTAINER_START_TIME_LIMIT=1800
+        
+        # Set the startup command to use main.py directly
+        az webapp config set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --startup-command "python main.py"
             
     - name: Verify deployment
       run: |
