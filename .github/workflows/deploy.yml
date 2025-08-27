@@ -41,7 +41,7 @@ jobs:
         
     - name: Build deployment package
       run: |
-        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt -x "**/__pycache__/*" "**/*.pyc"
+        zip -r sharepoint-mcp-deploy.zip src/ requirements.txt startup.sh azure.yaml -x "**/__pycache__/*" "**/*.pyc"
         
     - name: Azure Login
       uses: azure/login@v2
@@ -71,6 +71,9 @@ jobs:
             SCM_DO_BUILD_DURING_DEPLOYMENT=true \
             PYTHON_VERSION=${{ env.PYTHON_VERSION }} \
             WEBSITES_PORT=8000 \
+            WEBSITES_CONTAINER_START_TIME_LIMIT=1800 \
+            PYTHON_ENABLE_VENV_SITE_PACKAGES=true \
+            PYTHON_ENABLE_DEBUG_LOGGING=true \
             SHAREPOINT_SITE_URL="https://tassehcapital.sharepoint.com/sites/Business"
             
     - name: Configure Startup Command
@@ -78,7 +81,10 @@ jobs:
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --generic-configurations '{"appCommandLine": "export PYTHONPATH=/home/site/wwwroot/src:$PYTHONPATH && python -m uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000 --log-level info --access-log"}'
+          --startup-file "startup.sh"
+        
+        # Make startup script executable
+        az webapp ssh --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_WEBAPP_NAME }} --command "chmod +x /home/site/wwwroot/startup.sh"
             
     - name: Verify deployment
       run: |
