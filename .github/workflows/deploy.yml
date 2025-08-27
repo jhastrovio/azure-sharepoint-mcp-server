@@ -8,8 +8,8 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 env:
-  AZURE_WEBAPP_NAME: sharepoint-mcp-new
-  AZURE_RESOURCE_GROUP: rg-personalmsa
+  AZURE_WEBAPP_NAME: sharepoint-mcp-server-30347
+  AZURE_RESOURCE_GROUP: rg-sharepoint-mcp-server
   PYTHON_VERSION: '3.12'
 
 jobs:
@@ -71,7 +71,7 @@ jobs:
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --startup-file "pip install -r requirements.txt && python -m uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000"
+          --generic-configurations '{"appCommandLine": "cd /home/site/wwwroot && source antenv/bin/activate && export PYTHONPATH=/home/site/wwwroot/src:$PYTHONPATH && uvicorn azure_sharepoint_mcp.web_server:app --host 0.0.0.0 --port 8000"}'
             
     - name: Verify deployment
       run: |
