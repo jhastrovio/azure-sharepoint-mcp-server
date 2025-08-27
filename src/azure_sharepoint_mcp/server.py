@@ -293,8 +293,6 @@ class SharePointMCPServer:
             params=CallToolRequestParams(name=name, arguments=arguments),
         )
         result = await self.server.request_handlers[CallToolRequest](req)
-        return result.root.content
-    
     async def run(self, transport_type: str = "stdio") -> None:
         """Run the MCP server.
         
