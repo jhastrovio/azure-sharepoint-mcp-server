@@ -38,7 +38,7 @@ async def test_list_resources(server):
     resources = result.root.resources
 
     assert len(resources) == 1
-    assert str(resources[0].uri) == "sharepoint://files"
+    assert resources[0].uri == "sharepoint://files"
     assert resources[0].name == "SharePoint Files"
 
 
