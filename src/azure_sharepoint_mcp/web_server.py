@@ -5,9 +5,8 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from .server import SharePointMCPServer, SharePointConfig
 
@@ -15,22 +14,12 @@ from .server import SharePointMCPServer, SharePointConfig
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
-app = FastAPI(
-    title="Azure SharePoint MCP Server",
-    description="MCP Server for SharePoint operations via Microsoft Graph API",
-    version="1.0.0"
-)
-logger.info("FastAPI app created.")
+# Create Flask app
+app = Flask(__name__)
+logger.info("Flask app created.")
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add CORS support
+CORS(app)
 
 # Initialize MCP server
 mcp_server = None
@@ -51,75 +40,105 @@ def initialize_mcp_server():
         logger.error(f"Failed to initialize MCP Server: {e}")
         raise
 
-@app.on_event("startup")
-async def startup_event():
+# Initialize MCP server on app startup
+@app.before_first_request
+def startup_event():
     """Initialize MCP server on startup."""
     try:
         initialize_mcp_server()
     except Exception as e:
         logger.error(f"Startup crash: {type(e).__name__} - {e}", exc_info=True)
 
-@app.get("/")
-async def root():
+@app.route("/", methods=["GET"])
+def root():
     """Root endpoint."""
-    return {
+    return jsonify({
         "message": "Azure SharePoint MCP Server",
         "status": "running",
         "version": "1.0.0"
-    }
+    })
 
-@app.get("/health")
-async def health():
+@app.route("/health", methods=["GET"])
+def health():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "sharepoint-mcp"}
+    return jsonify({"status": "healthy", "service": "sharepoint-mcp"})
 
-@app.get("/tools")
-async def tools():
+@app.route("/tools", methods=["GET"])
+def tools():
     """List available MCP tools."""
     if mcp_server:
-        tools = await mcp_server.list_tools()
-        return {"tools": [tool.name for tool in tools]}
-    return {"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]}
+        try:
+            tools = mcp_server.list_tools()
+            return jsonify({"tools": [tool.name for tool in tools]})
+        except Exception as e:
+            logger.error(f"Error listing tools: {e}")
+            return jsonify({"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]})
+    return jsonify({"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]})
 
-@app.post("/execute")
-async def execute_tool(tool_name: str, params: Dict[str, Any] = None):
+@app.route("/execute", methods=["POST"])
+def execute_tool():
     """Execute an MCP tool."""
     if not mcp_server:
-        raise HTTPException(status_code=500, detail="MCP Server not initialized")
+        return jsonify({"error": "MCP Server not initialized"}), 500
     
     try:
-        result = await mcp_server.call_tool(tool_name, params or {})
-        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
-        return {"success": True, "result": serialized}
+        data = request.get_json()
+        tool_name = data.get("tool_name")
+        params = data.get("params", {})
+        
+        if not tool_name:
+            return jsonify({"error": "tool_name is required"}), 400
+        
+        result = mcp_server.call_tool(tool_name, params)
+        # Handle serialization for different result types
+        serialized = []
+        for item in result:
+            if hasattr(item, 'model_dump'):
+                serialized.append(item.model_dump())
+            else:
+                serialized.append(item)
+        return jsonify({"success": True, "result": serialized})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error executing tool {tool_name}: {e}")
+        return jsonify({"error": str(e)}), 500
 
-@app.get("/site-info")
-async def get_site_info():
+@app.route("/site-info", methods=["GET"])
+def get_site_info():
     """Get SharePoint site information."""
     if not mcp_server:
-        raise HTTPException(status_code=500, detail="MCP Server not initialized")
+        return jsonify({"error": "MCP Server not initialized"}), 500
     
     try:
-        result = await mcp_server.call_tool("get_site_info", {})
-        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
-        return {"success": True, "result": serialized}
+        result = mcp_server.call_tool("get_site_info", {})
+        serialized = []
+        for item in result:
+            if hasattr(item, 'model_dump'):
+                serialized.append(item.model_dump())
+            else:
+                serialized.append(item)
+        return jsonify({"success": True, "result": serialized})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting site info: {e}")
+        return jsonify({"error": str(e)}), 500
 
-@app.get("/files")
-async def list_files():
+@app.route("/files", methods=["GET"])
+def list_files():
     """List files in SharePoint."""
     if not mcp_server:
-        raise HTTPException(status_code=500, detail="MCP Server not initialized")
+        return jsonify({"error": "MCP Server not initialized"}), 500
     
     try:
-        result = await mcp_server.call_tool("list_files", {})
-        serialized = [c.model_dump() if isinstance(c, BaseModel) else c for c in result]
-        return {"success": True, "result": serialized}
+        result = mcp_server.call_tool("list_files", {})
+        serialized = []
+        for item in result:
+            if hasattr(item, 'model_dump'):
+                serialized.append(item.model_dump())
+            else:
+                serialized.append(item)
+        return jsonify({"success": True, "result": serialized})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error listing files: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", access_log=True)
+    app.run(host="0.0.0.0", port=8000, debug=False)

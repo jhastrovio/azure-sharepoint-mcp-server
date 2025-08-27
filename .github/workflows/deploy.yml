@@ -78,11 +78,12 @@ jobs:
             
     - name: Configure Startup Command
       run: |
-        # Use Azure's native Python startup with uvicorn
+        # Use Azure's native Python startup with gunicorn for Flask
+        # This follows Microsoft's recommended approach for Flask apps
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --startup-command "uvicorn main:app --host 0.0.0.0 --port 8000"
+          --startup-command "gunicorn main:app --bind 0.0.0.0:8000"
         
         # Set Python-specific app settings
         az webapp config appsettings set \
@@ -90,6 +91,12 @@ jobs:
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --settings \
             PYTHONPATH="/home/site/wwwroot/src"
+        
+        # Enable logging as recommended by Microsoft
+        az webapp log config \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --web-server-logging filesystem
             
     - name: Verify deployment
       run: |

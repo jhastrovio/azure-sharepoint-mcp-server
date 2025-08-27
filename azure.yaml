@@ -1,3 +1,5 @@
 language: python
 pythonVersion: '3.12'
-startupCommand: 'uvicorn main:app --host 0.0.0.0 --port 8000'
+startupCommand: 'gunicorn main:app --bind 0.0.0.0:8000'
+# Alternative: Use Flask's built-in server for development
+# startupCommand: 'python main.py'
