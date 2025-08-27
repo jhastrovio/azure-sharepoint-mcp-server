@@ -39,10 +39,10 @@ def initialize_mcp_server():
     global mcp_server
     try:
         config = SharePointConfig(
-            sharepoint_site_url=os.getenv("SHAREPOINT_SITE_URL"),
-            azure_tenant_id=os.getenv("AZURE_TENANT_ID"),
-            azure_client_id=os.getenv("AZURE_CLIENT_ID"),
-            azure_client_secret=os.getenv("AZURE_CLIENT_SECRET")
+            site_url=os.getenv("SHAREPOINT_SITE_URL"),
+            tenant_id=os.getenv("AZURE_TENANT_ID"),
+            client_id=os.getenv("AZURE_CLIENT_ID"),
+            client_secret=os.getenv("AZURE_CLIENT_SECRET"),
         )
         mcp_server = SharePointMCPServer(config)
         logger.info("MCP Server initialized successfully")
