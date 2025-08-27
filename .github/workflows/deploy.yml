@@ -79,10 +79,11 @@ jobs:
     - name: Configure Startup Command
       run: |
         # Remove any custom startup command to use Azure's default Python startup
+        # Use generic-configurations to clear the startup command
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --startup-command ""
+          --generic-configurations '{"appCommandLine": ""}'
         
         # Set Python-specific app settings
         az webapp config appsettings set \
