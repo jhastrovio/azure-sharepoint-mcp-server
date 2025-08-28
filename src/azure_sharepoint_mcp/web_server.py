@@ -67,12 +67,35 @@ def initialize_mcp_server():
         return None, f"Failed to initialize MCP Server: {e}"
 
 
-# Try to initialize on startup for a warm worker, but don't crash the process
-@app.before_first_request
 def startup_event():
+    """Warm the worker by attempting initialization without crashing.
+
+    This is registered against the best available Flask lifecycle hook.
+    Some Flask/Azure images used in App Service may not expose
+    `before_first_request` at import time which caused an AttributeError
+    in container logs. Register the hook conditionally to be robust.
+    """
     server, err = initialize_mcp_server()
     if err:
         logger.warning(f"MCP server not initialized at startup: {err}")
+
+
+# Register startup hook using the best available Flask API. Use
+# `before_first_request` when present, else fall back to `before_serving`.
+try:
+    if hasattr(app, "before_first_request"):
+        # In many Flask versions this is a decorator/factory that accepts
+        # a function to register. Calling it registers our startup_event.
+        app.before_first_request(startup_event)
+    elif hasattr(app, "before_serving"):
+        # `before_serving` is available in newer Flask releases; it accepts
+        # a callable to run before the app starts serving requests.
+        app.before_serving(startup_event)
+    else:
+        logger.info("No startup hook available on Flask; skipping warm init.")
+except Exception:
+    # Be defensive: if registration fails for any reason, log and continue.
+    logger.exception("Failed to register startup hook; continuing without warm init.")
 
 @app.route("/", methods=["GET"])
 def root():
