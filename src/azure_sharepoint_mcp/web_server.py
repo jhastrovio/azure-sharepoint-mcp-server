@@ -21,33 +21,58 @@ logger.info("Flask app created.")
 # Add CORS support
 CORS(app)
 
-# Initialize MCP server
+# Initialize MCP server (lazy, safe)
 mcp_server = None
 
 def initialize_mcp_server():
-    """Initialize the MCP server with configuration."""
+    """Attempt to initialize the MCP server.
+
+    Returns:
+        (SharePointMCPServer|None, str|None): tuple of (server, error_message).
+        Do not raise here so Gunicorn workers don't crash on bad config.
+    """
     global mcp_server
+    if mcp_server:
+        return mcp_server, None
+
+    site_url = os.getenv("SHAREPOINT_SITE_URL")
+    tenant_id = os.getenv("AZURE_TENANT_ID")
+    client_id = os.getenv("AZURE_CLIENT_ID")
+    client_secret = os.getenv("AZURE_CLIENT_SECRET")
+
+    missing = [k for k, v in {
+        "SHAREPOINT_SITE_URL": site_url,
+        "AZURE_TENANT_ID": tenant_id,
+        "AZURE_CLIENT_ID": client_id,
+        "AZURE_CLIENT_SECRET": client_secret,
+    }.items() if not v]
+
+    if missing:
+        msg = f"Missing required environment variables: {', '.join(missing)}"
+        logger.error(msg)
+        return None, msg
+
     try:
         config = SharePointConfig(
-            site_url=os.getenv("SHAREPOINT_SITE_URL"),
-            tenant_id=os.getenv("AZURE_TENANT_ID"),
-            client_id=os.getenv("AZURE_CLIENT_ID"),
-            client_secret=os.getenv("AZURE_CLIENT_SECRET"),
+            site_url=site_url,
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
         )
         mcp_server = SharePointMCPServer(config)
         logger.info("MCP server initialized successfully.")
+        return mcp_server, None
     except Exception as e:
-        logger.error(f"Failed to initialize MCP Server: {e}")
-        raise
+        logger.error(f"Failed to initialize MCP Server: {e}", exc_info=True)
+        return None, f"Failed to initialize MCP Server: {e}"
 
-# Initialize MCP server on app startup
+
+# Try to initialize on startup for a warm worker, but don't crash the process
 @app.before_first_request
 def startup_event():
-    """Initialize MCP server on startup."""
-    try:
-        initialize_mcp_server()
-    except Exception as e:
-        logger.error(f"Startup crash: {type(e).__name__} - {e}", exc_info=True)
+    server, err = initialize_mcp_server()
+    if err:
+        logger.warning(f"MCP server not initialized at startup: {err}")
 
 @app.route("/", methods=["GET"])
 def root():
@@ -66,30 +91,33 @@ def health():
 @app.route("/tools", methods=["GET"])
 def tools():
     """List available MCP tools."""
-    if mcp_server:
-        try:
-            tools = mcp_server.list_tools()
-            return jsonify({"tools": [tool.name for tool in tools]})
-        except Exception as e:
-            logger.error(f"Error listing tools: {e}")
-            return jsonify({"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]})
-    return jsonify({"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]})
+    server, err = initialize_mcp_server()
+    if err:
+        return jsonify({"error": err}), 500
+
+    try:
+        tools = server.list_tools()
+        return jsonify({"tools": [tool.name for tool in tools]})
+    except Exception as e:
+        logger.error(f"Error listing tools: {e}")
+        return jsonify({"tools": ["list_files", "read_file", "write_file", "delete_file", "create_folder", "get_site_info"]})
 
 @app.route("/execute", methods=["POST"])
 def execute_tool():
     """Execute an MCP tool."""
-    if not mcp_server:
-        return jsonify({"error": "MCP Server not initialized"}), 500
-    
+    server, err = initialize_mcp_server()
+    if err:
+        return jsonify({"error": err}), 500
+
     try:
         data = request.get_json()
         tool_name = data.get("tool_name")
         params = data.get("params", {})
-        
+
         if not tool_name:
             return jsonify({"error": "tool_name is required"}), 400
-        
-        result = mcp_server.call_tool(tool_name, params)
+
+        result = server.call_tool(tool_name, params)
         # Handle serialization for different result types
         serialized = []
         for item in result:
@@ -105,11 +133,12 @@ def execute_tool():
 @app.route("/site-info", methods=["GET"])
 def get_site_info():
     """Get SharePoint site information."""
-    if not mcp_server:
-        return jsonify({"error": "MCP Server not initialized"}), 500
-    
+    server, err = initialize_mcp_server()
+    if err:
+        return jsonify({"error": err}), 500
+
     try:
-        result = mcp_server.call_tool("get_site_info", {})
+        result = server.call_tool("get_site_info", {})
         serialized = []
         for item in result:
             if hasattr(item, 'model_dump'):
@@ -124,11 +153,12 @@ def get_site_info():
 @app.route("/files", methods=["GET"])
 def list_files():
     """List files in SharePoint."""
-    if not mcp_server:
-        return jsonify({"error": "MCP Server not initialized"}), 500
-    
+    server, err = initialize_mcp_server()
+    if err:
+        return jsonify({"error": err}), 500
+
     try:
-        result = mcp_server.call_tool("list_files", {})
+        result = server.call_tool("list_files", {})
         serialized = []
         for item in result:
             if hasattr(item, 'model_dump'):
